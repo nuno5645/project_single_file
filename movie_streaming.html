@@ -471,44 +471,6 @@
         </div>
       </section>
 
-      <!-- Continue Watching -->
-      <section id="continue" aria-labelledby="continue-title">
-        <div class="container panel">
-          <div class="section-header">
-            <h2 class="section-title" id="continue-title">Continue Watching</h2>
-            <div class="section-sub">Pick up right where you left off</div>
-          </div>
-          <div class="carousel">
-            <button class="carousel-btn prev" aria-label="Scroll left" data-dir="-1">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-            <div class="carousel-track" id="continue-track" aria-live="polite"></div>
-            <button class="carousel-btn next" aria-label="Scroll right" data-dir="1">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- For You -->
-      <section id="for-you" aria-labelledby="for-you-title">
-        <div class="container panel">
-          <div class="section-header">
-            <h2 class="section-title" id="for-you-title">For You</h2>
-            <div class="section-sub" id="for-you-sub">Recommended based on your recent picks</div>
-          </div>
-          <div class="carousel">
-            <button class="carousel-btn prev" aria-label="Scroll left" data-dir="-1">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-            <div class="carousel-track" id="for-you-track" aria-live="polite"></div>
-            <button class="carousel-btn next" aria-label="Scroll right" data-dir="1">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-          </div>
-        </div>
-      </section>
-
       <!-- Popular Movies -->
       <section id="popular" aria-labelledby="popular-title">
         <div class="container panel">
@@ -682,7 +644,7 @@
 
         function setActiveNav() {
           const links = document.querySelectorAll('.primary-nav .nav-link');
-          const sections = [ '#home', '#genres', '#mood', '#trending', '#continue', '#for-you', '#popular', '#top-rated', '#upcoming', '#on-the-air', '#search' ].map(id => document.querySelector(id));
+          const sections = [ '#home', '#genres', '#mood', '#trending', '#popular', '#top-rated', '#upcoming', '#on-the-air', '#search' ].map(id => document.querySelector(id));
           const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
               if (entry.isIntersecting) {
@@ -1037,54 +999,6 @@
           card.addEventListener('click', (e) => { e.preventDefault(); openDetails({ id: Number(card.dataset.id), media_type: card.dataset.media }); });
           initTilt(card);
           return card;
-        }
-
-        // Continue Watching
-        async function loadContinueWatching() {
-          const track = document.getElementById('continue-track');
-          if (!track) return;
-          renderSkeletons('continue-track', 6);
-          const resume = storage.get('resumePositions', []);
-          if (!resume.length) { track.innerHTML = ''; return; }
-          // Pull unique ids and types
-          const mode = (SETTINGS.mode || 'movies');
-          const unique = Array.from(new Map(resume.map(r => [r.key, r])).values())
-            .filter(r => (mode === 'series' ? r.key.startsWith('tv:') : r.key.startsWith('movie:')))
-            .slice(0, 12);
-          const items = await Promise.all(unique.map(async (r) => {
-            const [media, id] = r.key.split(':');
-            try {
-              return await fetchJSON(`/${media}/${id}`, { language: SETTINGS.language }, { cacheTtlMs: 30 * 60_000 });
-            } catch { return null; }
-          }));
-          track.innerHTML = '';
-          items.filter(Boolean).forEach((it, i) => {
-            const mediaType = it.title ? 'movie' : 'tv';
-            track.appendChild(createCard(it, mediaType));
-          });
-          attachCarouselArrows(track.closest('.carousel'));
-        }
-
-        // For You (recommendations from last interacted)
-        async function loadForYou() {
-          const track = document.getElementById('for-you-track');
-          if (!track) return;
-          renderSkeletons('for-you-track', 10);
-          let seed = storage.get('lastInteractedItem', null);
-          // Conform seed to current mode if available
-          const mode = (SETTINGS.mode || 'movies');
-          if (seed && ((mode === 'series' && seed.media_type !== 'tv') || (mode === 'movies' && seed.media_type !== 'movie'))) {
-            seed = null;
-          }
-          const sub = document.getElementById('for-you-sub');
-          if (!seed) { track.innerHTML = ''; sub.textContent = 'Interact with titles to get personalized picks'; return; }
-          sub.textContent = `Because you viewed ${seed.title || 'this title'}`;
-          const path = seed.media_type === 'tv' ? `/tv/${seed.id}/recommendations` : `/movie/${seed.id}/recommendations`;
-          const data = await fetchJSON(path, { language: SETTINGS.language }, { cacheTtlMs: 30 * 60_000 });
-          const list = data.results || [];
-          track.innerHTML = '';
-          list.slice(0, 20).forEach(it => track.appendChild(createCard(it, seed.media_type)));
-          attachCarouselArrows(track.closest('.carousel'));
         }
 
         async function loadPopular() {
@@ -1519,16 +1433,12 @@
             document.getElementById('toprated-track').innerHTML = '';
             document.getElementById('upcoming-track').innerHTML = '';
             document.getElementById('ontheair-track').innerHTML = '';
-            document.getElementById('continue-track').innerHTML = '';
-            document.getElementById('for-you-track').innerHTML = '';
           } catch {}
           loadTrending();
           loadPopular();
           loadTopRated();
           loadUpcoming();
           loadOnTheAir();
-          loadContinueWatching();
-          loadForYou();
         }
 
         function init() {
@@ -1560,6 +1470,7 @@
             navMovies.classList.add('active');
             if (navSeries) navSeries.classList.remove('active');
             applyMode();
+            document.getElementById('trending')?.scrollIntoView({ behavior: 'smooth' });
           });
           if (navSeries) navSeries.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1567,6 +1478,7 @@
             navSeries.classList.add('active');
             if (navMovies) navMovies.classList.remove('active');
             applyMode();
+            document.getElementById('trending')?.scrollIntoView({ behavior: 'smooth' });
           });
           // Apply initial mode on load to sync titles and content
           applyMode();
@@ -1574,12 +1486,10 @@
           loadGenres();
           initMood();
           loadTrending();
-          loadContinueWatching();
           loadPopular();
           loadTopRated();
           loadUpcoming();
           loadOnTheAir();
-          loadForYou();
           initSearch();
           // enable interactive tracks after content arrives
           // try to re-run a few times as asynchronous carousels render
